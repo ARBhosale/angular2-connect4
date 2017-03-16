@@ -1,0 +1,18 @@
+<div class="board">
+    <table [class]="isGameOver ? 'fade faded' : 'fade'">
+        <tr *ngFor="let row of board;">
+            <td *ngFor="let columnCell of row;">
+                <cell [cell]="columnCell" (cellClicked)="playMove($event)"></cell>
+            </td>
+        </tr>
+    </table>
+</div>
+<span style="display: block;text-align: center;">Players</span>
+<div class="player-legend">
+    <div class="player-1-cell">1</div>
+    <div class="player-2-cell">2</div>
+</div>
+<div style="display: block;text-align: center;" *ngIf="isGameOver">Player {{winner}} won the game!</div>
+<div style="display: block;text-align: center;">
+<button (click)="restartGame()"> Restart </button>
+</div>

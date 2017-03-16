@@ -1,0 +1,8 @@
+<div class="cell" (click)="handleCellClick()">
+    <!--empty cell-->
+    <div *ngIf="cell.getValue()==0" class="empty-cell"></div>
+    <!--player 1 cell-->
+    <div *ngIf="cell.getValue()==1" class="player-1-cell"></div>
+    <!--player 2 cell-->
+    <div *ngIf="cell.getValue()==2" class="player-2-cell"></div>
+</div>

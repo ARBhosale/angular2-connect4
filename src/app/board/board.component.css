@@ -1,0 +1,51 @@
+.board{
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-align-items: center;
+    align-items: center;
+    height: 500px;
+}
+.board table{
+    border-width: medium;
+    border-style: solid;
+    border-color: black;
+}
+.player-legend{
+     display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-align-items: center;
+    align-items: center;
+}
+.player-1-cell{
+    width: 40px;
+	height: 40px;
+	background: blue;
+	-moz-border-radius: 20px;
+	-webkit-border-radius: 20px;
+	border-radius: 20px;
+    text-align: center;
+    margin-right: 20px;
+}
+.player-2-cell{
+    width: 40px;
+	height: 40px;
+	background: red;
+	-moz-border-radius: 20px;
+	-webkit-border-radius: 20px;
+	border-radius: 20px;
+    text-align: center;
+    margin-left: 20px;
+}
+.fade {
+   opacity: 1;
+   transition: opacity .25s ease-in-out;
+   -moz-transition: opacity .25s ease-in-out;
+   -webkit-transition: opacity .25s ease-in-out;
+   }
+.faded {
+    opacity: 0.5;
+}

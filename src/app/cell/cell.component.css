@@ -1,0 +1,33 @@
+.cell{
+    height:50px;
+    width:50px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: black;
+    background-color: green;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-align-items: center;
+    align-items: center;
+    border-width: medium;
+}
+.empty-cell{
+}
+.player-1-cell{
+    width: 40px;
+	height: 40px;
+	background: blue;
+	-moz-border-radius: 20px;
+	-webkit-border-radius: 20px;
+	border-radius: 20px;
+}
+.player-2-cell{
+    width: 40px;
+	height: 40px;
+	background: red;
+	-moz-border-radius: 20px;
+	-webkit-border-radius: 20px;
+	border-radius: 20px;
+}
