@@ -4,14 +4,27 @@ import { CellValue } from '../cell/cell.value';
 @Injectable()
 export class TurnService {
 
-    private player: CellValue = CellValue.B;
+    private currentPlayer: CellValue = CellValue.A;
+    private nextPlayer: CellValue = CellValue.B;
 
     constructor() {
     }
 
-    public whoseMoveIsit(): CellValue {
-        this.player = this.player == CellValue.A ? CellValue.B : CellValue.A;
-        return this.player;
+    public whoIsPlaying(): CellValue{
+        return this.currentPlayer;
+    }
+
+    public whoIsNext(): CellValue{
+        return this.nextPlayer;
+    }
+
+    public turnComplete(playerJustPlayed: CellValue): void{
+        this.currentPlayer = this.nextPlayer;
+        this.nextPlayer = playerJustPlayed;
+    }
+
+    public getOtherPlayer(player: CellValue): CellValue{
+        return player === CellValue.A ? CellValue.B : CellValue.A;
     }
 
 }

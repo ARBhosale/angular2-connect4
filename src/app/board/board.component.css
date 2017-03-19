@@ -49,3 +49,15 @@
 .faded {
     opacity: 0.5;
 }
+.winner-message{
+    display: block;
+    text-align: center;
+}
+.restart-button-div{
+    display: block;
+    text-align: center;
+}
+.ai-play-button-div{
+    display: block;
+    text-align: center;
+}

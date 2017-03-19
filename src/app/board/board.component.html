@@ -2,7 +2,7 @@
     <table [class]="isGameOver ? 'fade faded' : 'fade'">
         <tr *ngFor="let row of board;">
             <td *ngFor="let columnCell of row;">
-                <cell [cell]="columnCell" (cellClicked)="playMove($event)"></cell>
+                <cell [cell]="columnCell" (cellClicked)="playMove(board, $event)"></cell>
             </td>
         </tr>
     </table>
@@ -12,7 +12,13 @@
     <div class="player-1-cell">1</div>
     <div class="player-2-cell">2</div>
 </div>
-<div style="display: block;text-align: center;" *ngIf="isGameOver">Player {{winner}} won the game!</div>
-<div style="display: block;text-align: center;">
-<button (click)="restartGame()"> Restart </button>
+<div class="winner-message" *ngIf="isGameOver">Player {{winner}} won the game!</div>
+<div class="ai-play-button-div">
+    <button (click)="botMove()"> AI play </button>
+</div>
+<div *ngIf="returnCell" class="ai-play-button-div">
+    Play {{returnCell.cell.rowNumber}},{{returnCell.cell.columnNumber}} score: {{returnCell.score}}
+</div>
+<div class="restart-button-div">
+    <button (click)="restartGame()"> Restart </button>
 </div>
