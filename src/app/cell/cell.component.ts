@@ -17,6 +17,6 @@ export class CellComponent {
     }
 
     public handleCellClick():void{
-        this.cellClicked.emit(this.cell.getCellColumnNumber());
+        this.cellClicked.emit(this.cell.columnNumber);
     }
 }

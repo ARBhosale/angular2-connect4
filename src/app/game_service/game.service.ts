@@ -3,6 +3,7 @@ import { Cell } from '../cell/cell';
 import { CellValue } from '../cell/cell.value';
 import { BoardComponent, NUMBER_OF_ROWS, NUMBER_OF_COLUMNS } from '../board/board.component';
 
+export const LENGTHOFCONNECTION = 3;
 @Injectable()
 export class GameService {
 
@@ -14,31 +15,35 @@ export class GameService {
     }
 
     private checkDiagonalConnection(board: Cell[][]): boolean {
-        for (let i = 0; i + 3 < NUMBER_OF_ROWS; i++) {
-            for (let j = 0; j + 3 < NUMBER_OF_COLUMNS; j++) {
+        for (let i = 0; i + LENGTHOFCONNECTION - 1 < NUMBER_OF_ROWS; i++) {
+            for (let j = 0; j + LENGTHOFCONNECTION - 1 < NUMBER_OF_COLUMNS; j++) {
                 let firstCellValue = board[i][j].getValue();
                 if (firstCellValue === CellValue.Empty)
                     continue;
-
-                let secondCellValue = board[i + 1][j + 1].getValue();
-                let thirdCellValue = board[i + 2][j + 2].getValue();
-                let fourthCellValue = board[i + 3][j + 3].getValue();
-
-                if ((firstCellValue == secondCellValue) && (secondCellValue == thirdCellValue) && (thirdCellValue == fourthCellValue))
+                let k = 1;
+                for(k = 1; k< LENGTHOFCONNECTION; k++){
+                    let cellValue = board[i + k][j + k].getValue();
+                    if(firstCellValue !== cellValue){
+                        break;
+                    }
+                }
+                if (k == LENGTHOFCONNECTION)
                     return true;
             }
         }
-        for (let i = NUMBER_OF_ROWS - 1; i - 3 >= 0; i--) {
-            for (let j = 0; j + 3 < NUMBER_OF_COLUMNS; j++) {
+        for (let i = NUMBER_OF_ROWS - 1; i - (LENGTHOFCONNECTION - 1) >= 0; i--) {
+            for (let j = 0; j + (LENGTHOFCONNECTION - 1) < NUMBER_OF_COLUMNS; j++) {
                 let firstCellValue = board[i][j].getValue();
                 if (firstCellValue === CellValue.Empty)
                     continue;
-
-                let secondCellValue = board[i - 1][j + 1].getValue();
-                let thirdCellValue = board[i - 2][j + 2].getValue();
-                let fourthCellValue = board[i - 3][j + 3].getValue();
-
-                if ((firstCellValue == secondCellValue) && (secondCellValue == thirdCellValue) && (thirdCellValue == fourthCellValue))
+                let k = 1;
+                for(k = 1; k< LENGTHOFCONNECTION; k++){
+                    let cellValue = board[i - k][j + k].getValue();
+                    if(firstCellValue !== cellValue){
+                        break;
+                    }
+                }
+                if (k == LENGTHOFCONNECTION)
                     return true;
             }
         }
@@ -46,17 +51,19 @@ export class GameService {
     }
 
     private checkVerticalConnection(board: Cell[][]): boolean {
-        for (let i = NUMBER_OF_ROWS - 1; i - 3 >= 0; i--) {
+        for (let i = NUMBER_OF_ROWS - 1; i - (LENGTHOFCONNECTION - 1) >= 0; i--) {
             for (let j = 0; j < NUMBER_OF_COLUMNS; j++) {
                 let firstCellValue = board[i][j].getValue();
                 if (firstCellValue === CellValue.Empty)
                     continue;
-
-                let secondCellValue = board[i - 1][j].getValue();
-                let thirdCellValue = board[i - 2][j].getValue();
-                let fourthCellValue = board[i - 3][j].getValue();
-
-                if ((firstCellValue == secondCellValue) && (secondCellValue == thirdCellValue) && (thirdCellValue == fourthCellValue))
+                let k = 1;
+                for(k = 1; k< LENGTHOFCONNECTION; k++){
+                    let cellValue = board[i - k][j].getValue();
+                    if(firstCellValue !== cellValue){
+                        break;
+                    }
+                }
+                if (k == LENGTHOFCONNECTION)
                     return true;
             }
         }
@@ -65,16 +72,18 @@ export class GameService {
 
     private checkHorizontalConnection(board: Cell[][]): boolean {
         for (let i = NUMBER_OF_ROWS - 1; i >= 0; i--) {
-            for (let j = 0; j + 3 < NUMBER_OF_COLUMNS; j++) {
+            for (let j = 0; j + (LENGTHOFCONNECTION - 1) < NUMBER_OF_COLUMNS; j++) {
                 let firstCellValue = board[i][j].getValue();
                 if (firstCellValue === CellValue.Empty)
                     continue;
-
-                let secondCellValue = board[i][j + 1].getValue();
-                let thirdCellValue = board[i][j + 2].getValue();
-                let fourthCellValue = board[i][j + 3].getValue();
-
-                if ((firstCellValue == secondCellValue) && (secondCellValue == thirdCellValue) && (thirdCellValue == fourthCellValue))
+                let k = 1;
+                for(k = 1; k< LENGTHOFCONNECTION; k++){
+                    let cellValue = board[i][j+k].getValue();
+                    if(firstCellValue !== cellValue){
+                        break;
+                    }
+                }
+                if (k == LENGTHOFCONNECTION)
                     return true;
             }
         }

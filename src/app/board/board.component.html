@@ -16,8 +16,11 @@
 <div class="ai-play-button-div">
     <button (click)="botMove()"> AI play </button>
 </div>
-<div *ngIf="returnCell" class="ai-play-button-div">
-    Play {{returnCell.cell.rowNumber}},{{returnCell.cell.columnNumber}} score: {{returnCell.score}}
+<div *ngIf="columnToSuggest" class="ai-play-button-div">
+    Columns score: {{score}}
+</div>
+<div class="undo-button-div">
+    <button (click)="undoMove()"> Undo </button>
 </div>
 <div class="restart-button-div">
     <button (click)="restartGame()"> Restart </button>
