@@ -8,7 +8,7 @@ import { Board } from './board';
 
 export const NUMBER_OF_COLUMNS: number = 3;
 export const NUMBER_OF_ROWS: number = 3;
-export class ReturnCell {
+export class MoveScore {
     cell: Cell;
     score: number;
 }
@@ -30,7 +30,7 @@ export class BoardComponent {
         [-2, 1, -1, 2, 1, 2, -1]
     ];
 
-    public board: Cell[][] = [];
+    public board: Board;
     private botBoard: Board;
     private isGameOver: boolean = false;
     private winner: CellValue;
@@ -39,17 +39,14 @@ export class BoardComponent {
     private numberOfMovesPlayedOnBotBoard: number = 0;
     public returnCell: Cell;
     public score: string;
-    private moveScores: number[];
+    private moveScores: MoveScore[];
     public columnToSuggest: number;
     private lastCellCaptured: Cell;
 
     constructor(private turnService: TurnService) {
+        this.board = new Board();
         this.gameService = new GameService();
         this.botBoard = new Board();
-    }
-
-    ngOnInit() {
-        this.initializeCellValues();
     }
 
     public playMove(board: Cell[][], moveSelectedInColumnNumber: number): void {
@@ -72,67 +69,62 @@ export class BoardComponent {
 
     public botMove(): void {
         this.resetBotBoard();
-        // let playerToPlayNext = this.turnService.whoIsPlaying();
-        // let alpha = -NUMBER_OF_ROWS * NUMBER_OF_COLUMNS / 2;
-        // let beta = NUMBER_OF_ROWS * NUMBER_OF_COLUMNS / 2
-        // this.score = this.getScore(alpha, beta);
-        // if (this.turnService.whoIsPlaying() !== playerToPlayNext) {
-        //     this.turnService.turnComplete(this.turnService.whoIsPlaying());
-        // }
         let currentPlayer = this.turnService.whoIsPlaying();
         this.getScores(this.turnService.getOtherPlayer(currentPlayer), this.botBoard);
+        this.moveScores = this.getCellsInColumnSortedOrder(this.moveScores);
         this.score = this.moveScores.join(',');
         let minScore = this.getMin(this.moveScores);
-        let columnIndexOrder = this.moveScores.indexOf(minScore);
-        let emptyColumnsFound = 0;
-        for(let i = 0; i< NUMBER_OF_COLUMNS; i++){
-            let topCell = this.getFirstEmptyCellInColumn(this.board, i);
-            if(topCell){
-                if(emptyColumnsFound == columnIndexOrder){
-                    this.playMove(this.board, i);
-                    break;
-                }
-                emptyColumnsFound++
-            }
+        let topMostEmptyCell = this.getFirstEmptyCellInColumn(this.board.board, minScore.cell.columnNumber);
+        if(topMostEmptyCell) {
+            this.playMove(this.board.board, topMostEmptyCell.columnNumber);
         }
     }
 
     public restartGame(): void {
-        this.board = [];
+        this.board = new Board();
         this.botBoard = new Board();
-        this.initializeCellValues();
         this.gameService = new GameService();
         this.winner = null;
         this.isGameOver = false;
     }
 
-    private getMin(scores: number[]): number {
-        let min = NUMBER_OF_ROWS*NUMBER_OF_COLUMNS;
-        for(let i=0; i< scores.length; i++) {
-            if(scores[i]<=min)
+    private isCellAvailable(cell: Cell): boolean {
+        return cell ? cell.isEmpty() : false;
+    }
+
+    private getMin(scores: MoveScore[]): MoveScore {
+        let min: MoveScore = {cell: null, score: NUMBER_OF_ROWS * NUMBER_OF_COLUMNS};
+
+        for (let i = 0; i < scores.length; i++) {
+            if (scores[i].score <= min.score)
                 min = scores[i];
         }
         return min;
     }
 
     private getMax(scores: number[]): number {
-        let max = -NUMBER_OF_ROWS*NUMBER_OF_COLUMNS;
-        for(let i=0; i< scores.length; i++) {
-            if(scores[i]>=max)
+        let max = -NUMBER_OF_ROWS * NUMBER_OF_COLUMNS;
+        for (let i = 0; i < scores.length; i++) {
+            if (scores[i] >= max)
                 max = scores[i];
         }
         return max;
     }
 
+    private isGameDraw(board: Board): boolean {
+        return NUMBER_OF_ROWS * NUMBER_OF_COLUMNS === board.numberOfMovesPlayed;
+
+    }
+
     private getScores(player: CellValue, board: Board): number {
-        if (this.isGameDraw(board.board)) {
+        if (this.isGameDraw(board)) {
             return 0;
         }
         if (this.gameService.isGameOver(board.board)) {
             return NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - board.numberOfMovesPlayed;
         }
         let nextMoveCells = this.getNextMoveCells(board);
-        let moveScores: number[] = [];
+        let moveScores: MoveScore[] = [];
         let moveScore = 0;
         for (let possibleMove = 0; possibleMove < nextMoveCells.length; possibleMove++) {
             let moveCellRow = nextMoveCells[possibleMove].rowNumber;
@@ -144,11 +136,52 @@ export class BoardComponent {
             moveBoard.numberOfMovesPlayed++;
             let nextPlayer = this.turnService.getOtherPlayer(currentPlayer);
             moveScore = -this.getScores(nextPlayer, moveBoard);
-            moveScores[possibleMove] = moveScore;
+            moveScores[possibleMove] = { cell: moveCell, score: moveScore };
         }
         this.moveScores = moveScores;
-        
+
         return moveScore;
+    }
+
+    private getCellsInColumnSortedOrder(cells: MoveScore[]): MoveScore[] {
+        let columnSortedOrderCells: MoveScore[] = [];
+        if (cells.length == 0)
+            return cells;
+        columnSortedOrderCells.push(cells[0]);
+        for (let i = 0; i < cells.length; i++) {
+            for (let j = 0; j < columnSortedOrderCells.length; j++) {
+                if (columnSortedOrderCells.indexOf(cells[i]) == -1) {
+                    if (cells[i].cell.columnNumber < columnSortedOrderCells[j].cell.columnNumber) {
+                        columnSortedOrderCells = [cells[i]].concat(columnSortedOrderCells);
+                        continue;
+                    }
+                    columnSortedOrderCells.push(cells[i]);
+                }
+            }
+        }
+        return columnSortedOrderCells;
+    }
+
+    private getMoveCellsInOptimalOrder(moveCells: Cell[]): Cell[] {
+        if (moveCells.length == 0)
+            return moveCells;
+        let optimalMoveCells: Cell[] = [];
+        optimalMoveCells.push(moveCells[0]);
+        for (let i = 0; i < moveCells.length; i++) {
+            let cell = moveCells[i];
+            if (optimalMoveCells.indexOf(cell) == -1) {
+                if (cell.columnNumber == (NUMBER_OF_COLUMNS / 2) - 0.5) {
+                    optimalMoveCells = [cell].concat(optimalMoveCells);
+                    continue;
+                }
+                if (cell.columnNumber == 0 || cell.columnNumber == (NUMBER_OF_COLUMNS - 1)) {
+                    optimalMoveCells = [cell].concat(optimalMoveCells);
+                    continue;
+                }
+                optimalMoveCells.push(cell);
+            }
+        }
+        return optimalMoveCells;
     }
 
     private getCopyOfBoard(board: Board): Board {
@@ -167,29 +200,17 @@ export class BoardComponent {
         return copy;
     }
 
-    private getNumberOfMovesPlayed(board: Cell[][]): number {
-        return board == this.board ? this.numberOfMovesPlayed : this.numberOfMovesPlayedOnBotBoard;
-    }
-
-    private isGameDraw(board: Cell[][]): boolean {
-        let numberOfMovesPlayed = this.getNumberOfMovesPlayed(board);
-        return NUMBER_OF_ROWS * NUMBER_OF_COLUMNS === numberOfMovesPlayed;
-
-    }
-
     private getNextMoveCells(board: Board): Cell[] {
         let nextMoveCells: Cell[] = [];
         for (let i = 0; i < NUMBER_OF_COLUMNS; i++) {
             let cell = this.getFirstEmptyCellInColumn(board.board, i);
-            if(cell)
+            if (cell)
                 nextMoveCells.push(cell);
         }
+        nextMoveCells = this.getMoveCellsInOptimalOrder(nextMoveCells);
         return nextMoveCells;
     }
 
-    private isCellAvailable(cell: Cell): boolean {
-        return cell ? cell.isEmpty() : false;
-    }
 
     private captureCell(cell: Cell, player: CellValue): void {
         cell.setValue(player);
@@ -205,7 +226,7 @@ export class BoardComponent {
     }
 
     private declareWinnerIfGameOver(player: CellValue): void {
-        if (this.gameService.isGameOver(this.board)) {
+        if (this.gameService.isGameOver(this.board.board)) {
             this.isGameOver = true;
             this.winner = player;
         }
@@ -220,31 +241,31 @@ export class BoardComponent {
         return null;
     }
 
-    private initializeCellValues(): void {
-        for (let i = 0; i < NUMBER_OF_ROWS; i++) {
-            let row: Cell[] = [];
-            let botRow: Cell[] = [];
-            for (let j = 0; j < NUMBER_OF_COLUMNS; j++) {
-                let cell = new Cell(i, j);
-                let botCell = new Cell(i, j);
-                cell.setValue(CellValue.Empty);
-                botCell.setValue(CellValue.Empty);
-                row.push(cell);
-                botRow.push(botCell);
-            }
-            this.board.push(row);
-            this.botBoard.board.push(botRow);
-        }
-    }
+    // private initializeCellValues(): void {
+    //     for (let i = 0; i < NUMBER_OF_ROWS; i++) {
+    //         let row: Cell[] = [];
+    //         let botRow: Cell[] = [];
+    //         for (let j = 0; j < NUMBER_OF_COLUMNS; j++) {
+    //             let cell = new Cell(i, j);
+    //             let botCell = new Cell(i, j);
+    //             cell.setValue(CellValue.Empty);
+    //             botCell.setValue(CellValue.Empty);
+    //             row.push(cell);
+    //             botRow.push(botCell);
+    //         }
+    //         this.board.board.push(row);
+    //         this.botBoard.board.push(botRow);
+    //     }
+    // }
 
     private resetBotBoard(): void {
-        this.returnCell = null;
+        this.botBoard = new Board();
         this.botBoard.board = [];
         for (let i = 0; i < NUMBER_OF_ROWS; i++) {
             let row: Cell[] = [];
             for (let j = 0; j < NUMBER_OF_COLUMNS; j++) {
                 let cell = new Cell(i, j);
-                cell.setValue(this.board[i][j].getValue());
+                cell.setValue(this.board.board[i][j].getValue());
                 row.push(cell);
             }
             this.botBoard.board.push(row);
@@ -252,55 +273,55 @@ export class BoardComponent {
         }
     }
 
-    private getScore(alpha: number, beta: number): number {
+    // private getScore(alpha: number, beta: number): number {
 
-        if (this.numberOfMovesPlayedOnBotBoard == NUMBER_OF_ROWS * NUMBER_OF_COLUMNS) {
-            return 0
-        }
+    //     if (this.numberOfMovesPlayedOnBotBoard == NUMBER_OF_ROWS * NUMBER_OF_COLUMNS) {
+    //         return 0
+    //     }
 
-        for (let i = 0; i < NUMBER_OF_COLUMNS; i++) {
-            let cell = this.getFirstEmptyCellInColumn(this.botBoard.board, i);
+    //     for (let i = 0; i < NUMBER_OF_COLUMNS; i++) {
+    //         let cell = this.getFirstEmptyCellInColumn(this.botBoard.board, i);
 
-            if (this.isCellAvailable(cell)) {
-                let player = this.turnService.whoIsPlaying();
-                cell.setValue(player);
-                this.numberOfMovesPlayedOnBotBoard++;
-                let isGameOver = this.gameService.isGameOver(this.botBoard.board);
-                if (isGameOver) {
-                    let returnCellScore = { cell: cell, score: (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS + 1 - this.numberOfMovesPlayedOnBotBoard) / 2 };
-                    return returnCellScore.score;
-                }
-                else {
-                    cell.setValue(CellValue.Empty);
-                    this.numberOfMovesPlayedOnBotBoard--;
-                }
-            }
-        }
-        let max = (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - 1 - (this.numberOfMovesPlayedOnBotBoard)) / 2;
-        if (beta > max) {
-            beta = max;
-            if (alpha >= beta)
-                return beta;
-        }
-        let returnCellScore: number;
-        for (let i = 0; i < NUMBER_OF_COLUMNS; i++) {
-            let cell = this.getFirstEmptyCellInColumn(this.botBoard.board, i);
-            if (this.isCellAvailable(cell)) {
-                let currentPlayer = this.turnService.whoIsPlaying();
-                cell.setValue(currentPlayer);
-                this.numberOfMovesPlayedOnBotBoard++;
-                this.turnService.turnComplete(currentPlayer);
-                returnCellScore = -this.getScore(-beta, -alpha);
-                if (returnCellScore >= beta)
-                    return returnCellScore;
-                if (returnCellScore > alpha) {
-                    alpha = returnCellScore;
-                }
-            }
-            if (cell)
-                this.returnCell = cell;
-        }
-        return returnCellScore;
+    //         if (this.isCellAvailable(cell)) {
+    //             let player = this.turnService.whoIsPlaying();
+    //             cell.setValue(player);
+    //             this.numberOfMovesPlayedOnBotBoard++;
+    //             let isGameOver = this.gameService.isGameOver(this.botBoard.board);
+    //             if (isGameOver) {
+    //                 let returnCellScore = { cell: cell, score: (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS + 1 - this.numberOfMovesPlayedOnBotBoard) / 2 };
+    //                 return returnCellScore.score;
+    //             }
+    //             else {
+    //                 cell.setValue(CellValue.Empty);
+    //                 this.numberOfMovesPlayedOnBotBoard--;
+    //             }
+    //         }
+    //     }
+    //     let max = (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - 1 - (this.numberOfMovesPlayedOnBotBoard)) / 2;
+    //     if (beta > max) {
+    //         beta = max;
+    //         if (alpha >= beta)
+    //             return beta;
+    //     }
+    //     let returnCellScore: number;
+    //     for (let i = 0; i < NUMBER_OF_COLUMNS; i++) {
+    //         let cell = this.getFirstEmptyCellInColumn(this.botBoard.board, i);
+    //         if (this.isCellAvailable(cell)) {
+    //             let currentPlayer = this.turnService.whoIsPlaying();
+    //             cell.setValue(currentPlayer);
+    //             this.numberOfMovesPlayedOnBotBoard++;
+    //             this.turnService.turnComplete(currentPlayer);
+    //             returnCellScore = -this.getScore(-beta, -alpha);
+    //             if (returnCellScore >= beta)
+    //                 return returnCellScore;
+    //             if (returnCellScore > alpha) {
+    //                 alpha = returnCellScore;
+    //             }
+    //         }
+    //         if (cell)
+    //             this.returnCell = cell;
+    //     }
+    //     return returnCellScore;
 
-    }
+    // }
 }

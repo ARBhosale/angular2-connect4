@@ -1,8 +1,8 @@
 <div class="board">
     <table [class]="isGameOver ? 'fade faded' : 'fade'">
-        <tr *ngFor="let row of board;">
+        <tr *ngFor="let row of board.board;">
             <td *ngFor="let columnCell of row;">
-                <cell [cell]="columnCell" (cellClicked)="playMove(board, $event)"></cell>
+                <cell [cell]="columnCell" (cellClicked)="playMove(board.board, $event)"></cell>
             </td>
         </tr>
     </table>
