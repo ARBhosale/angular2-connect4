@@ -3,7 +3,7 @@ import { Cell } from '../cell/cell';
 import { CellValue } from '../cell/cell.value';
 import { BoardComponent, NUMBER_OF_ROWS, NUMBER_OF_COLUMNS } from '../board/board.component';
 
-export const LENGTHOFCONNECTION = 3;
+export const LENGTHOFCONNECTION = 4;
 @Injectable()
 export class GameService {
 
