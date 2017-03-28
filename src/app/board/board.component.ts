@@ -18,17 +18,7 @@ export class MoveScore {
     templateUrl: `./app/board/board.component.html`,
 })
 export class BoardComponent {
-    static depth = 10;
-    private initialScoresForAIFirst: number[] = [-2, -1, 0, 1, 0, -1, 2];
-    private initialScoresForAISecond: number[][] = [
-        [-1, 2, 1, 2, -1, 1, -2],
-        [-2, 0, 1, 0, -2, -2, -3],
-        [-2, -2, 0, 0, 0, 0, -3],
-        [-4, -2, -2, -1, -2, -2, -4],
-        [-3, 0, 0, 0, 0, -2, -2],
-        [-3, -2, -2, 0, 1, 0, -2],
-        [-2, 1, -1, 2, 1, 2, -1]
-    ];
+    private depth = 12;
 
     public board: Board;
     private botBoard: Board;
@@ -42,6 +32,9 @@ export class BoardComponent {
     private moveScores: MoveScore[];
     public columnToSuggest: number;
     private lastCellCaptured: Cell;
+    private autoMove = false;
+    private opponentMoveScores: MoveScore[];
+    private selfMoveScores: MoveScore[];
 
     constructor(private turnService: TurnService) {
         this.board = new Board();
@@ -52,11 +45,19 @@ export class BoardComponent {
     public playMove(board: Cell[][], moveSelectedInColumnNumber: number): void {
         if (this.isGameOver)
             return;
+        this.autoMove = true;
         let cell = this.getFirstEmptyCellInColumn(board, moveSelectedInColumnNumber);
         if (this.isCellAvailable(cell)) {
             let currentPlayer = this.turnService.whoIsPlaying();
             this.captureCell(cell, currentPlayer);
+            let timeOut = setTimeout(function (_this) {
+                if (_this.autoMove)
+                    _this.botMove();
+                _this.autoMove = false;
+                clearTimeout(timeOut);
+            }, 100, this);
         }
+
     }
 
     public undoMove(): void {
@@ -68,19 +69,65 @@ export class BoardComponent {
     }
 
     public botMove(): void {
+        do {
+            this.evalMoves();
+            this.depth++;
+            console.log("depth:"+this.depth);
+        } while (this.areAllSame(this.opponentMoveScores)&&this.depth <= 15);
+        this.depth = 12;
+        let minOpponentScore = this.getMin(this.opponentMoveScores);
+        let maxSelfScore = this.getMax(this.selfMoveScores);
+        let columnToPlay;
+        if (!minOpponentScore.cell && maxSelfScore.cell)
+            columnToPlay = maxSelfScore.cell.columnNumber;
+        else if (maxSelfScore.score >= 0 && minOpponentScore.score < 0)
+            columnToPlay = Math.abs(maxSelfScore.score) > Math.abs(minOpponentScore.score)
+                ? maxSelfScore.cell.columnNumber : minOpponentScore.cell.columnNumber;
+        else
+            columnToPlay = minOpponentScore.cell.columnNumber;
+
+        // if ( maxSelfScore.cell && minOpponentScore.cell && maxSelfScore.score == minOpponentScore.score) {
+        //     colomnToPlay = minOpponentScore.cell.columnNumber;
+        // }
+        // else if(maxSelfScore.cell && minOpponentScore.cell && maxSelfScore.score < 0) {
+        //     colomnToPlay = minOpponentScore.cell.columnNumber;
+        // }
+        // else if(maxSelfScore.cell && minOpponentScore.cell && maxSelfScore.score >= 0) {
+        //     colomnToPlay =  maxSelfScore.cell.columnNumber;
+        // }
+        // else if (!maxSelfScore.cell && !minOpponentScore.cell) {
+        //     colomnToPlay = this.getNextMoveCells(this.board).pop().columnNumber;
+        // }
+        // else if(!maxSelfScore.cell) {
+        //     colomnToPlay = minOpponentScore.cell.columnNumber;
+        //     colomnToPlay = this.getMax(this.opponentMoveScores).cell.columnNumber;
+        // }
+        // else if (!minOpponentScore.cell) {
+        //     colomnToPlay = maxSelfScore.cell.columnNumber;
+        //     //colomnToPlay = this.getMin(this.selfMoveScores).cell.columnNumber;
+        // }
+
+        let topMostEmptyCell = this.getFirstEmptyCellInColumn(this.board.board, columnToPlay);
+        if (this.isCellAvailable(topMostEmptyCell)) {
+            let currentPlayer = this.turnService.whoIsPlaying();
+            this.captureCell(topMostEmptyCell, currentPlayer);
+        }
+    }
+
+    private evalMoves(): void {
         this.resetBotBoard();
         this.moveScores = [];
         let currentPlayer = this.turnService.whoIsPlaying();
         let alpha = -NUMBER_OF_COLUMNS * NUMBER_OF_ROWS;
         let beta = NUMBER_OF_COLUMNS * NUMBER_OF_ROWS;
         this.getScores(this.turnService.getOtherPlayer(currentPlayer), this.botBoard, alpha, beta);
-        // this.moveScores = this.getCellsInColumnSortedOrder(this.moveScores);
-        this.score = this.moveScores.join(',');
-        let minScore = this.getMin(this.moveScores);
-        let topMostEmptyCell = this.getFirstEmptyCellInColumn(this.board.board, minScore.cell.columnNumber);
-        if (topMostEmptyCell) {
-            this.playMove(this.board.board, topMostEmptyCell.columnNumber);
-        }
+        this.opponentMoveScores = this.moveScores;
+        this.resetBotBoard();
+        this.moveScores = [];
+        this.getScores(currentPlayer, this.botBoard, alpha, beta);
+        this.selfMoveScores = this.moveScores;
+        console.log(this.opponentMoveScores);
+        console.log(this.selfMoveScores);
     }
 
     public restartGame(): void {
@@ -115,14 +162,13 @@ export class BoardComponent {
         return max;
     }
 
-    // private getMax(scores: number[]): number {
-    //     let max = -NUMBER_OF_ROWS * NUMBER_OF_COLUMNS;
-    //     for (let i = 0; i < scores.length; i++) {
-    //         if (scores[i] >= max)
-    //             max = scores[i];
-    //     }
-    //     return max;
-    // }
+    private areAllSame(scores: MoveScore[]): boolean {
+        for (let i = 0; i < scores.length - 1; i++) {
+            if (scores[i].score != scores[i + 1].score)
+                return false;
+        }
+        return true;
+    }
 
     private isGameDraw(board: Board): boolean {
         return NUMBER_OF_ROWS * NUMBER_OF_COLUMNS === board.numberOfMovesPlayed;
@@ -144,10 +190,23 @@ export class BoardComponent {
             moveCell.setValue(currentPlayer);
             moveBoard.numberOfMovesPlayed++;
             if (this.gameService.isGameOver(board.board) ||
-            (this.botBoard.numberOfMovesPlayed + BoardComponent.depth)==moveBoard.numberOfMovesPlayed) {
+                (this.botBoard.numberOfMovesPlayed + this.depth) == moveBoard.numberOfMovesPlayed) {
                 return (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - moveBoard.numberOfMovesPlayed) / 2;
             }
         }
+
+        // for (let possibleMove = 0; possibleMove < nextMoveCells.length; possibleMove++) {
+        //     let currentPlayer = player;
+        //     let moveBoard = this.getCopyOfBoard(board);
+        //     let moveCellRow = nextMoveCells[possibleMove].rowNumber;
+        //     let moveCellColumn = nextMoveCells[possibleMove].columnNumber;
+        //     let moveCell = moveBoard.board[moveCellRow][moveCellColumn];
+        //     moveCell.setValue(currentPlayer);
+        //     moveBoard.numberOfMovesPlayed++;
+        //     if (this.gameService.isOneConnectionLeft(board.board)){
+        //         return (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - moveBoard.numberOfMovesPlayed + 1) / 2;
+        //     }
+        // }
 
 
         let moveScores: MoveScore[] = [];
@@ -268,8 +327,8 @@ export class BoardComponent {
 
     private movePlayedByPlayer(player: CellValue): void {
         this.turnService.turnComplete(player);
-        this.numberOfMovesPlayed++;
-        this.numberOfMovesPlayedOnBotBoard++;
+        this.board.numberOfMovesPlayed++;
+        this.botBoard.numberOfMovesPlayed++;
     }
 
     private declareWinnerIfGameOver(player: CellValue): void {
@@ -288,23 +347,6 @@ export class BoardComponent {
         return null;
     }
 
-    // private initializeCellValues(): void {
-    //     for (let i = 0; i < NUMBER_OF_ROWS; i++) {
-    //         let row: Cell[] = [];
-    //         let botRow: Cell[] = [];
-    //         for (let j = 0; j < NUMBER_OF_COLUMNS; j++) {
-    //             let cell = new Cell(i, j);
-    //             let botCell = new Cell(i, j);
-    //             cell.setValue(CellValue.Empty);
-    //             botCell.setValue(CellValue.Empty);
-    //             row.push(cell);
-    //             botRow.push(botCell);
-    //         }
-    //         this.board.board.push(row);
-    //         this.botBoard.board.push(botRow);
-    //     }
-    // }
-
     private resetBotBoard(): void {
         this.botBoard = new Board();
         this.botBoard.board = [];
@@ -316,59 +358,7 @@ export class BoardComponent {
                 row.push(cell);
             }
             this.botBoard.board.push(row);
-            this.botBoard.numberOfMovesPlayed = this.numberOfMovesPlayed;
+            this.botBoard.numberOfMovesPlayed = this.board.numberOfMovesPlayed;
         }
     }
-
-    // private getScore(alpha: number, beta: number): number {
-
-    //     if (this.numberOfMovesPlayedOnBotBoard == NUMBER_OF_ROWS * NUMBER_OF_COLUMNS) {
-    //         return 0
-    //     }
-
-    //     for (let i = 0; i < NUMBER_OF_COLUMNS; i++) {
-    //         let cell = this.getFirstEmptyCellInColumn(this.botBoard.board, i);
-
-    //         if (this.isCellAvailable(cell)) {
-    //             let player = this.turnService.whoIsPlaying();
-    //             cell.setValue(player);
-    //             this.numberOfMovesPlayedOnBotBoard++;
-    //             let isGameOver = this.gameService.isGameOver(this.botBoard.board);
-    //             if (isGameOver) {
-    //                 let returnCellScore = { cell: cell, score: (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS + 1 - this.numberOfMovesPlayedOnBotBoard) / 2 };
-    //                 return returnCellScore.score;
-    //             }
-    //             else {
-    //                 cell.setValue(CellValue.Empty);
-    //                 this.numberOfMovesPlayedOnBotBoard--;
-    //             }
-    //         }
-    //     }
-    //     let max = (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - 1 - (this.numberOfMovesPlayedOnBotBoard)) / 2;
-    //     if (beta > max) {
-    //         beta = max;
-    //         if (alpha >= beta)
-    //             return beta;
-    //     }
-    //     let returnCellScore: number;
-    //     for (let i = 0; i < NUMBER_OF_COLUMNS; i++) {
-    //         let cell = this.getFirstEmptyCellInColumn(this.botBoard.board, i);
-    //         if (this.isCellAvailable(cell)) {
-    //             let currentPlayer = this.turnService.whoIsPlaying();
-    //             cell.setValue(currentPlayer);
-    //             this.numberOfMovesPlayedOnBotBoard++;
-    //             this.turnService.turnComplete(currentPlayer);
-    //             returnCellScore = -this.getScore(-beta, -alpha);
-    //             if (returnCellScore >= beta)
-    //                 return returnCellScore;
-    //             if (returnCellScore > alpha) {
-    //                 alpha = returnCellScore;
-    //             }
-    //         }
-    //         if (cell)
-    //             this.returnCell = cell;
-    //     }
-    //     return returnCellScore;
-
-    // }
 }
