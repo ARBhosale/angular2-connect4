@@ -8,6 +8,7 @@ import { Board } from './board';
 
 export const NUMBER_OF_COLUMNS: number = 7;
 export const NUMBER_OF_ROWS: number = 6;
+const DEPTH  = 12;
 export class MoveScore {
     cell: Cell;
     score: number;
@@ -18,7 +19,7 @@ export class MoveScore {
     templateUrl: `./app/board/board.component.html`,
 })
 export class BoardComponent {
-    private depth = 12;
+    private depth = DEPTH;
 
     public board: Board;
     private botBoard: Board;
@@ -50,12 +51,12 @@ export class BoardComponent {
         if (this.isCellAvailable(cell)) {
             let currentPlayer = this.turnService.whoIsPlaying();
             this.captureCell(cell, currentPlayer);
-            let timeOut = setTimeout(function (_this) {
-                if (_this.autoMove)
-                    _this.botMove();
-                _this.autoMove = false;
-                clearTimeout(timeOut);
-            }, 100, this);
+            // let timeOut = setTimeout(function (_this) {
+            //     if (_this.autoMove)
+            //         _this.botMove();
+            //     _this.autoMove = false;
+            //     clearTimeout(timeOut);
+            // }, 100, this);
         }
 
     }
@@ -69,43 +70,41 @@ export class BoardComponent {
     }
 
     public botMove(): void {
+        let minOpponentScore;
         do {
             this.evalMoves();
             this.depth++;
             console.log("depth:"+this.depth);
-        } while (this.areAllSame(this.opponentMoveScores)&&this.depth <= 15);
-        this.depth = 12;
-        let minOpponentScore = this.getMin(this.opponentMoveScores);
-        let maxSelfScore = this.getMax(this.selfMoveScores);
-        let columnToPlay;
-        if (!minOpponentScore.cell && maxSelfScore.cell)
-            columnToPlay = maxSelfScore.cell.columnNumber;
-        else if (maxSelfScore.score >= 0 && minOpponentScore.score < 0)
-            columnToPlay = Math.abs(maxSelfScore.score) > Math.abs(minOpponentScore.score)
-                ? maxSelfScore.cell.columnNumber : minOpponentScore.cell.columnNumber;
-        else
-            columnToPlay = minOpponentScore.cell.columnNumber;
+            minOpponentScore = this.getMin(this.opponentMoveScores);
+            console.log("minOpponentScore:",minOpponentScore);
+        } while (Math.abs(minOpponentScore.score)<=5 && this.areAllSame(this.opponentMoveScores)&&this.depth <= 15);
+        this.depth = DEPTH;
+        minOpponentScore = this.getMin(this.opponentMoveScores);
+        let maxSelfScore = this.getMin(this.selfMoveScores);
+console.log("minOpponentScore:",minOpponentScore);
+console.log("maxSelfScore:", maxSelfScore);
+        let columnToPlay = Math.abs(maxSelfScore.score) > Math.abs(minOpponentScore.score) ? minOpponentScore.cell.columnNumber: maxSelfScore.cell.columnNumber;
+        let c = this.getMax(this.opponentMoveScores);
+        let d = this.getMax(this.selfMoveScores);
+        if( c.score>=0 )
+            columnToPlay = c.cell.columnNumber;
+        if( d.score >= 0 && d.score > c.score)
+            columnToPlay = d.cell.columnNumber;
 
-        // if ( maxSelfScore.cell && minOpponentScore.cell && maxSelfScore.score == minOpponentScore.score) {
-        //     colomnToPlay = minOpponentScore.cell.columnNumber;
-        // }
-        // else if(maxSelfScore.cell && minOpponentScore.cell && maxSelfScore.score < 0) {
-        //     colomnToPlay = minOpponentScore.cell.columnNumber;
-        // }
-        // else if(maxSelfScore.cell && minOpponentScore.cell && maxSelfScore.score >= 0) {
-        //     colomnToPlay =  maxSelfScore.cell.columnNumber;
-        // }
-        // else if (!maxSelfScore.cell && !minOpponentScore.cell) {
-        //     colomnToPlay = this.getNextMoveCells(this.board).pop().columnNumber;
-        // }
-        // else if(!maxSelfScore.cell) {
-        //     colomnToPlay = minOpponentScore.cell.columnNumber;
-        //     colomnToPlay = this.getMax(this.opponentMoveScores).cell.columnNumber;
-        // }
-        // else if (!minOpponentScore.cell) {
-        //     colomnToPlay = maxSelfScore.cell.columnNumber;
-        //     //colomnToPlay = this.getMin(this.selfMoveScores).cell.columnNumber;
-        // }
+        let nextMoveCells = this.getNextMoveCells(this.board);
+         for (let possibleMove = 0; possibleMove < nextMoveCells.length; possibleMove++) {
+            let currentPlayer = this.turnService.whoIsPlaying();
+            let moveBoard = this.getCopyOfBoard(this.board);
+            let moveCellRow = nextMoveCells[possibleMove].rowNumber;
+            let moveCellColumn = nextMoveCells[possibleMove].columnNumber;
+            let moveCell = moveBoard.board[moveCellRow][moveCellColumn];
+            moveCell.setValue(currentPlayer);
+            moveBoard.numberOfMovesPlayed++;
+            if (this.gameService.isGameOver(moveBoard.board)) {
+                columnToPlay = moveCell.columnNumber;
+                break;
+            }
+         }
 
         let topMostEmptyCell = this.getFirstEmptyCellInColumn(this.board.board, columnToPlay);
         if (this.isCellAvailable(topMostEmptyCell)) {
@@ -180,8 +179,13 @@ export class BoardComponent {
             return 0;
         }
 
+        if (this.gameService.isGameOver(board.board) ||
+                (this.botBoard.numberOfMovesPlayed + this.depth) == board.numberOfMovesPlayed) {
+                return (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS + 1 - board.numberOfMovesPlayed) / 2;
+        }
+
         let nextMoveCells = this.getNextMoveCells(board);
-        for (let possibleMove = 0; possibleMove < nextMoveCells.length; possibleMove++) {
+         for (let possibleMove = 0; possibleMove < nextMoveCells.length; possibleMove++) {
             let currentPlayer = player;
             let moveBoard = this.getCopyOfBoard(board);
             let moveCellRow = nextMoveCells[possibleMove].rowNumber;
@@ -189,9 +193,11 @@ export class BoardComponent {
             let moveCell = moveBoard.board[moveCellRow][moveCellColumn];
             moveCell.setValue(currentPlayer);
             moveBoard.numberOfMovesPlayed++;
-            if (this.gameService.isGameOver(board.board) ||
+            if (this.gameService.isGameOver(moveBoard.board) ||
                 (this.botBoard.numberOfMovesPlayed + this.depth) == moveBoard.numberOfMovesPlayed) {
-                return (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - moveBoard.numberOfMovesPlayed) / 2;
+                    let moveScore = (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS + 1 - moveBoard.numberOfMovesPlayed) / 2;
+                    this.moveScores.push({cell: moveCell, score: moveScore});
+                return moveScore;
             }
         }
 
@@ -208,6 +214,13 @@ export class BoardComponent {
         //     }
         // }
 
+        let max = (NUMBER_OF_ROWS * NUMBER_OF_COLUMNS - 1 - board.numberOfMovesPlayed) / 2;
+        if (beta > max){
+            beta = max;
+            if (alpha>=beta) {
+                return beta;
+            }
+        }
 
         let moveScores: MoveScore[] = [];
 
